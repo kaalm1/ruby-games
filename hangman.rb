@@ -20,8 +20,12 @@ module Hangman
       History.all.select{|x| user_id === self.id}
     end
 
+    def self.find id
+      User.all.detect {|x| x.id == id}
+    end
+
     def self.find_or_create name
-      User.all.select {|x| x.name == name}.first || User.new(name)
+      User.all.detect {|x| x.name == name} || User.new(name)
     end
   end
 
@@ -39,9 +43,18 @@ module Hangman
       @@store << self
     end
 
-    def all
+    def self.all
       @@store
     end
+
+    def self.high_scores
+      # create a hash with each user_id and see how many wins then sort based on highest... - or you can save wins in user
+      obj = self.all.each_with_object({}) do |obj, x|
+        obj[x.user_id] = obj[x.user_id].to_i + 1
+      end
+      obj.sort_by{|x,y| -y}.map{|x,y| [User.find(x), y]}
+    end
+
   end
 
   class Dictionary
@@ -104,6 +117,12 @@ puts "What is your name?"
 name = gets.chomp
 user = User.find_or_create name
 loop do
+  # puts "Welcome to hangman!"
+  # puts "Please pick from the following options:"
+  # 1) Play hangman
+  # 2) View highscore
+  # 3) Quit
+
   puts "Would you like to play hangman (Y/N)"
   response = gets.chomp
   puts "I'm sorry I didn't get that." if !["Y","N"].include?(response)
