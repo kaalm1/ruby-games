@@ -20,22 +20,22 @@ module Hangman
       History.all.select{|x| user_id === self.id}
     end
 
-    def find_or_create name
-      User.all.select {|x| x.name == name}.first || User.new name
+    def self.find_or_create name
+      User.all.select {|x| x.name == name}.first || User.new(name)
     end
   end
 
   class History
-    attr_accessor :user_id, :guesses, :errors, :did_win, :word
+    attr_accessor :user_id, :completed_word, :errors, :did_win, :word
     @@store = []
 
 
-    def initialize(user_id = nil, guesses= nil, errors = nil, word = nil, did_win = nil)
-      @user_id = user_id
-      @did_win = did_win
-      @errors = errors
-      @word = word
-      @guesses = guesses
+    def initialize(user, game)
+      @user_id = user.id
+      @did_win = game.did_win?
+      @errors = game.errors
+      @word = game.word
+      @completed_word = game.completed_word
       @@store << self
     end
 
@@ -45,8 +45,8 @@ module Hangman
   end
 
   class Dictionary
-    def initialize
-      return ["Hello", "Seek", "Random"].sample
+    def self.word
+      return ["hello", "seek", "random"].sample
     end
   end
 
@@ -54,11 +54,11 @@ module Hangman
     attr_accessor :word, :user_id, :errors, :possible_mistakes, :completed_word
 
     def initialize(user_id=nil)
-      @word = Dictionary.new
+      @word = Dictionary.word()
       @user_id = user_id
       @errors = []
       @possible_mistakes = 5
-      @completed_word = "_"*@word.length
+      @completed_word = "_"*self.word.length
     end
 
     def did_lose?
@@ -71,7 +71,7 @@ module Hangman
 
     def guess
       puts @completed_word
-      puts "Guess a letter?"
+      puts "Guess a letter? #{self.errors.length}/#{self.possible_mistakes} errors"
       response = gets.chomp
       self.check_response response
     end
@@ -79,20 +79,26 @@ module Hangman
     def check_response res
       # first check if valid response - needs to be "a...z" and only one letter
       if res.length != 1 || res.downcase <"a" || res.downcase > "z"
-        "That is an invalid entry, please try again."
+        puts "That is an invalid entry, please try again."
         return
       end
       if self.word.include?(res)
         # replace all letters
         @completed_word = @completed_word.split("").each_with_index.map{|x, i| word[i] == res ? res : x}.join("")
       else
-        @errors << res.downcase
+        if @errors.include?(res)
+          puts "You already gussed that. Try a different letter."
+        else
+          @errors << res.downcase
+        end
       end
     end
 
   end
 
 end
+
+include Hangman
 
 puts "What is your name?"
 name = gets.chomp
@@ -111,6 +117,7 @@ loop do
     else
       puts "Sorry you lost. Maybe next time."
     end
+    History.new user, game
   end
   break if response == "N"
 end
